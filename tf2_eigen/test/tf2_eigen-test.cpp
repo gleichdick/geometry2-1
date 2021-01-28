@@ -34,10 +34,16 @@
 
 // To get M_PI, especially on Windows.
 #include <math.h>
+#include <memory>
 
 #include <tf2_eigen/tf2_eigen.h>
 #include <gtest/gtest.h>
+#include <rclcpp/clock.hpp>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/buffer.h>
 #include <tf2/convert.h>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <geometry_msgs/msg/quaternion_stamped.hpp>
 
 TEST(TfEigen, ConvertVector3dStamped)
 {
@@ -124,7 +130,156 @@ TEST(TfEigen, ConvertTransform)
   EXPECT_TRUE(tm.isApprox(Iback.matrix()));
 }
 
-int main(int argc, char **argv){
+struct EigenBufferTransform : public ::testing::Test
+{
+  static void SetUpTestSuite()
+  {
+    rclcpp::Clock::SharedPtr clock = std::make_shared<rclcpp::Clock>(RCL_SYSTEM_TIME);
+    tf_buffer = std::make_unique<tf2_ros::Buffer>(clock);
+    tf_buffer->setUsingDedicatedThread(true);
+
+    // populate buffer
+    geometry_msgs::msg::TransformStamped t;
+    t.transform.translation.x = 10;
+    t.transform.translation.y = 20;
+    t.transform.translation.z = 30;
+    t.transform.rotation.w = 0;
+    t.transform.rotation.x = 1;
+    t.transform.rotation.y = 0;
+    t.transform.rotation.z = 0;
+    t.header.stamp = tf2::toMsg(tf2::timeFromSec(2));
+    t.header.frame_id = "A";
+    t.child_frame_id = "B";
+    tf_buffer->setTransform(t, "test");
+  }
+
+
+  template<int mode>
+  void testEigenTransform();
+
+  static std::unique_ptr<tf2_ros::Buffer> tf_buffer;
+  static constexpr double EPS = 1e-3;
+};
+
+std::unique_ptr<tf2_ros::Buffer> EigenBufferTransform::tf_buffer;
+
+template<int mode>
+void EigenBufferTransform::testEigenTransform()
+{
+  using T = Eigen::Transform<double, 3, mode>;
+  using stampedT = tf2::Stamped<T>;
+
+  geometry_msgs::msg::PoseStamped v1;
+  v1.pose.position.x = 1;
+  v1.pose.position.y = 2;
+  v1.pose.position.z = 3;
+  v1.pose.orientation.w = 0;
+  v1.pose.orientation.x = 1;
+  v1.pose.orientation.y = 0;
+  v1.pose.orientation.z = 0;
+  v1.header.stamp = tf2::toMsg(tf2::timeFromSec(2));
+  v1.header.frame_id = "A";
+
+  stampedT i1;
+  tf2::convert(v1, i1);
+
+  // simple api
+  const stampedT i_simple = tf_buffer->transform(i1, "B", tf2::durationFromSec(2.0));
+  EXPECT_NEAR(i_simple.translation().x(), -9, EPS);
+  EXPECT_NEAR(i_simple.translation().y(), 18, EPS);
+  EXPECT_NEAR(i_simple.translation().z(), 27, EPS);
+  const auto q1 = Eigen::Quaterniond(i_simple.linear());
+  EXPECT_NEAR(q1.x(), 0.0, EPS);
+  EXPECT_NEAR(q1.y(), 0.0, EPS);
+  EXPECT_NEAR(q1.z(), 0.0, EPS);
+  EXPECT_NEAR(q1.w(), 1.0, EPS);
+
+  geometry_msgs::msg::PoseStamped v_simple;
+  tf2::convert(i_simple, v_simple);
+  EXPECT_NEAR(v_simple.pose.position.x, -9, EPS);
+  EXPECT_NEAR(v_simple.pose.position.y, 18, EPS);
+  EXPECT_NEAR(v_simple.pose.position.z, 27, EPS);
+  EXPECT_NEAR(v_simple.pose.orientation.x, 0.0, EPS);
+  EXPECT_NEAR(v_simple.pose.orientation.y, 0.0, EPS);
+  EXPECT_NEAR(v_simple.pose.orientation.z, 0.0, EPS);
+  EXPECT_NEAR(v_simple.pose.orientation.w, 1.0, EPS);
+
+
+  // advanced api
+  const stampedT v_advanced = tf_buffer->transform(
+    i1, "B", tf2::timeFromSec(2.0),
+    "A", tf2::durationFromSec(3.0));
+  EXPECT_NEAR(v_advanced.translation().x(), -9, EPS);
+  EXPECT_NEAR(v_advanced.translation().y(), 18, EPS);
+  EXPECT_NEAR(v_advanced.translation().z(), 27, EPS);
+  const auto q2 = Eigen::Quaterniond(v_advanced.linear());
+  EXPECT_NEAR(q2.x(), 0.0, EPS);
+  EXPECT_NEAR(q2.y(), 0.0, EPS);
+  EXPECT_NEAR(q2.z(), 0.0, EPS);
+  EXPECT_NEAR(q2.w(), 1.0, EPS);
+}
+
+TEST_F(EigenBufferTransform, Affine3d)
+{
+  testEigenTransform<Eigen::Affine>();
+}
+
+TEST_F(EigenBufferTransform, Isometry3d)
+{
+  testEigenTransform<Eigen::Isometry>();
+}
+
+TEST_F(EigenBufferTransform, Vector)
+{
+  const tf2::Stamped<Eigen::Vector3d> v1 {{1, 2, 3}, tf2::toMsg(tf2::timeFromSec(2)), "A"};
+
+  // simple api
+  const tf2::Stamped<Eigen::Vector3d> v_simple =
+    tf_buffer->transform(v1, "B", tf2::durationFromSec(2.0));
+  EXPECT_NEAR(v_simple.x(), -9, EPS);
+  EXPECT_NEAR(v_simple.y(), 18, EPS);
+  EXPECT_NEAR(v_simple.z(), 27, EPS);
+
+  // advanced api
+  const tf2::Stamped<Eigen::Vector3d> v_advanced = tf_buffer->transform(
+    v1, "B", tf2::timeFromSec(2.0),
+    "A", tf2::durationFromSec(3.0));
+  EXPECT_NEAR(v_advanced.x(), -9, EPS);
+  EXPECT_NEAR(v_advanced.y(), 18, EPS);
+  EXPECT_NEAR(v_advanced.z(), 27, EPS);
+}
+
+TEST_F(EigenBufferTransform, Quaternion)
+{
+  using namespace Eigen;
+  // rotated by -90° around y
+  // 0, 0, -1
+  // 0, 1, 0,
+  // 1, 0, 0
+  const tf2::Stamped<Quaterniond> q1 {{Quaterniond(AngleAxisd(-0.5 * M_PI, Vector3d::UnitY()))},
+    tf2::toMsg(tf2::timeFromSec(2)), "A"};
+
+  // simple api
+  const tf2::Stamped<Quaterniond> q_simple =
+    tf_buffer->transform(q1, "B", tf2::durationFromSec(2.0));
+  EXPECT_NEAR(q_simple.x(), 0.707107, EPS);
+  EXPECT_NEAR(q_simple.y(), 0, EPS);
+  EXPECT_NEAR(q_simple.z(), -0.707107, EPS);
+  EXPECT_NEAR(q_simple.w(), 0, EPS);
+
+  // advanced api
+  const tf2::Stamped<Quaterniond> q_advanced = tf_buffer->transform(
+    q1, "B", tf2::timeFromSec(2.0),
+    "A", tf2::durationFromSec(3.0));
+  EXPECT_NEAR(q_advanced.x(), 0.707107, EPS);
+  EXPECT_NEAR(q_advanced.y(), 0, EPS);
+  EXPECT_NEAR(q_advanced.z(), -0.707107, EPS);
+  EXPECT_NEAR(q_advanced.w(), 0, EPS);
+}
+
+
+int main(int argc, char ** argv)
+{
   testing::InitGoogleTest(&argc, argv);
 
   return RUN_ALL_TESTS();
