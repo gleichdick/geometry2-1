@@ -184,36 +184,20 @@ struct defaultMessage<Eigen::Quaterniond>
  * although it can not be used in tf2_ros::BufferInterface::transform because this
  * functions rely on the existence of a time stamp and a frame id in the type which should
  * get transformed.
- * \param t_in The vector to transform, as a Eigen Quaterniond data type.
- * \param t_out The transformed vector, as a Eigen Quaterniond data type.
- * \param transform The timestamped transform to apply, as a TransformStamped message.
+ * \param[in] t_in The vector to transform, as a Eigen Quaterniond data type.
+ * \param[in,out] t_out The transformed vector, as a Eigen Quaterniond data type.
+ * \param[in] transform The timestamped transform to apply, as a TransformStamped message.
  */
 template<>
 inline
-void doTransform(const Eigen::Quaterniond& t_in,
-                 Eigen::Quaterniond& t_out,
-                 const geometry_msgs::msg::TransformStamped& transform) {
+void doTransform(
+  const Eigen::Quaterniond & t_in,
+  Eigen::Quaterniond & t_out,
+  const geometry_msgs::msg::TransformStamped & transform)
+{
   Eigen::Quaterniond t;
-  fromMsg(transform.transform.rotation, t);
-  t_out = t.inverse() * t_in * t;
-}
-
-/** \brief Apply a geometry_msgs TransformStamped to an Eigen-specific Quaterniond type.
- * This function is a specialization of the doTransform template defined in tf2/convert.h.
- * \param t_in The vector to transform, as a timestamped Eigen Quaterniond data type.
- * \param t_out The transformed vector, as a timestamped Eigen Quaterniond data type.
- * \param transform The timestamped transform to apply, as a TransformStamped message.
- */
-template <>
-inline
-void doTransform(const tf2::Stamped<Eigen::Quaterniond>& t_in,
-     tf2::Stamped<Eigen::Quaterniond>& t_out,
-     const geometry_msgs::msg::TransformStamped& transform) {
-  t_out.frame_id_ = transform.header.frame_id;
-  tf2::fromMsg(transform.header.stamp, t_out.stamp_);
-  doTransform(
-    static_cast<const Eigen::Quaterniond &>(t_in), static_cast<Eigen::Quaterniond &>(t_out),
-    transform);
+  tf2::fromMsg<>(transform.transform.rotation, t);
+  t_out = Eigen::Quaterniond(t.toRotationMatrix() * t_in.toRotationMatrix());
 }
 
 namespace impl
