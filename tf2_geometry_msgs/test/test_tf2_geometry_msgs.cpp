@@ -276,6 +276,39 @@ TEST(TfGeometry, Point)
   EXPECT_NEAR(v_advanced.point.z, 27, EPS);
 }
 
+TEST(TfGeometry, Quaternion)
+{
+  // rotated by -90° around y
+  // 0, 0, -1
+  // 0, 1, 0,
+  // 1, 0, 0
+  geometry_msgs::msg::QuaternionStamped q1, res;
+  q1.quaternion.x = 0;
+  q1.quaternion.y = -0.707107;
+  q1.quaternion.z = 0;
+  q1.quaternion.w = 0.707107;
+  q1.header.stamp = tf2_ros::toMsg(tf2::timeFromSec(2));
+  q1.header.frame_id = "A";
+
+  // simple api
+  const geometry_msgs::msg::QuaternionStamped q_simple = tf_buffer->transform(
+    q1, "B", tf2::durationFromSec(
+      2.0));
+  EXPECT_NEAR(q_simple.quaternion.x, 0.707107, EPS);
+  EXPECT_NEAR(q_simple.quaternion.y, 0, EPS);
+  EXPECT_NEAR(q_simple.quaternion.z, -0.707107, EPS);
+  EXPECT_NEAR(q_simple.quaternion.w, 0, EPS);
+
+  // advanced api
+  const geometry_msgs::msg::QuaternionStamped q_advanced = tf_buffer->transform(
+    q1, "B", tf2::timeFromSec(2.0),
+    "A", tf2::durationFromSec(3.0));
+  EXPECT_NEAR(q_advanced.quaternion.x, 0.707107, EPS);
+  EXPECT_NEAR(q_advanced.quaternion.y, 0, EPS);
+  EXPECT_NEAR(q_advanced.quaternion.z, -0.707107, EPS);
+  EXPECT_NEAR(q_advanced.quaternion.w, 0, EPS);
+}
+
 
 int main(int argc, char **argv){
   testing::InitGoogleTest(&argc, argv);
