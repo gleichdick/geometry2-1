@@ -10,7 +10,8 @@ jobs:
     - name: ROS 2 CI Action
       # You may pin to the exact commit or the version.
       # uses: ros-tooling/action-ros-ci@e9bb2de25dbd413c6a95e0bd5111b4027759f6af
-      uses: ros-tooling/action-ros-ci@0.1.1
+    - uses: ros-tooling/setup-ros@v0.1
+    - uses: ros-tooling/action-ros-ci@0.1.1
       with:
         target-ros2-distro: foxy
         package-name: test_tf2 geometry2
