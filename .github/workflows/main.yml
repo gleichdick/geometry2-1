@@ -11,8 +11,7 @@ jobs:
       # uses: ros-tooling/action-ros-ci@e9bb2de25dbd413c6a95e0bd5111b4027759f6af
     - uses: ros-tooling/setup-ros@v0.1
     - run: |
-        if not exist log mkdir log
-        if not exist log/latest mkdir log/latest
+        New-Item -ItemType Directory -Force -Path "log/latest" | Out-Null
     - uses: ros-tooling/action-ros-ci@0.1.1
       with:
         target-ros2-distro: rolling
