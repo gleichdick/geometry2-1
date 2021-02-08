@@ -14,3 +14,4 @@ jobs:
       with:
         target-ros2-distro: foxy
         package-name: test_tf2 geometry2
+        vcs-repo-file-url: https://github.com/gleichdick/ros2/raw/no-tf2/ros2.repos
