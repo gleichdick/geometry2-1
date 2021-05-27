@@ -22,9 +22,23 @@ endif()
 find_package(Bullet REQUIRED)
 
 include_directories(include ${BULLET_INCLUDE_DIRS})
+add_library(${PROJECT_NAME} INTERFACE)
+target_include_directories(${PROJECT_NAME} INTERFACE
+  "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
+  "$<INSTALL_INTERFACE:include>"
+)
+target_include_directories(${PROJECT_NAME} SYSTEM INTERFACE
+  "$<BUILD_INTERFACE:${BULLET_INCLUDE_DIRS}>"
+)
+target_link_libraries(${PROJECT_NAME} INTERFACE
+  "$<BUILD_INTERFACE:${BULLET_LIBRARIES}>"
+)
 
-install(DIRECTORY include/${PROJECT_NAME}/
-  DESTINATION include/${PROJECT_NAME}
+install(TARGETS ${PROJECT_NAME}
+  EXPORT ${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION lib
 )
 
 if(BUILD_TESTING)
@@ -39,11 +53,13 @@ if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_add_gtest(test_bullet test/test_tf2_bullet.cpp)
   ament_target_dependencies(test_bullet
-    tf2
     geometry_msgs
+    tf2
     tf2_ros
   )
+  target_link_libraries(test_bullet ${PROJECT_NAME})
 endif()
 
-ament_export_include_directories(include)
-ament_package()
+ament_export_libraries(${PROJECT_NAME})
+ament_export_targets(${PROJECT_NAME})
+ament_package(CONFIG_EXTRAS_POST bullet-extra.cmake)
