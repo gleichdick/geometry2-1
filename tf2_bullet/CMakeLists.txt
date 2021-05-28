@@ -21,7 +21,6 @@ if(WIN32)
 endif()
 find_package(Bullet REQUIRED)
 
-include_directories(include ${BULLET_INCLUDE_DIRS})
 add_library(${PROJECT_NAME} INTERFACE)
 target_include_directories(${PROJECT_NAME} INTERFACE
   "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>"
@@ -65,4 +64,4 @@ if(BUILD_TESTING)
 endif()
 
 ament_export_targets(${PROJECT_NAME})
-ament_package(CONFIG_EXTRAS_POST bullet-extra.cmake)
+ament_package(CONFIG_EXTRAS_POST bullet-extras.cmake)
