@@ -41,6 +41,10 @@ install(TARGETS ${PROJECT_NAME}
   RUNTIME DESTINATION lib
 )
 
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION include/${PROJECT_NAME}
+)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   find_package(ament_cmake_cppcheck REQUIRED)
@@ -60,6 +64,5 @@ if(BUILD_TESTING)
   target_link_libraries(test_bullet ${PROJECT_NAME})
 endif()
 
-ament_export_libraries(${PROJECT_NAME})
 ament_export_targets(${PROJECT_NAME})
 ament_package(CONFIG_EXTRAS_POST bullet-extra.cmake)

@@ -3,9 +3,9 @@ if(WIN32)
 endif()
 find_package(Bullet REQUIRED)
 
-target_include_directories(tf2_bullet SYSTEM INTERFACE
+target_include_directories(tf2_bullet::tf2_bullet SYSTEM INTERFACE
   ${BULLET_INCLUDE_DIRS}
 )
-target_link_libraries(tf2_bullet INTERFACE
+target_link_libraries(tf2_bullet::tf2_bullet INTERFACE
   ${BULLET_LIBRARIES}
 )
